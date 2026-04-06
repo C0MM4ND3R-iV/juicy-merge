@@ -1,7 +1,7 @@
 import { Scene, GameObjects, Scenes, Structs } from 'phaser';
 import { THEME, colorValue, cssColor } from '../theme';
 
-type MenuButton = Phaser.GameObjects.Container & {
+type MenuButton = GameObjects.Container & {
   redraw: (hovered: boolean) => void;
   widthPx: number;
   heightPx: number;

@@ -1,6 +1,6 @@
 import { Scene } from 'phaser';
 import * as Phaser from 'phaser';
-import { THEME, colorValue } from '../theme';
+import { THEME, colorValue, cssColor } from '../theme';
 
 export class Preloader extends Scene {
   private progressRing!: Phaser.GameObjects.Graphics;
@@ -49,7 +49,7 @@ export class Preloader extends Scene {
         strokeThickness: 5,
       })
       .setOrigin(0.5)
-      .setShadow(0, 0, THEME.accent, 10, true, true);
+      .setShadow(0, 0, cssColor(THEME.accent), 10, true, true);
 
     this.add
       .text(cx, cy - panelH * 0.2, 'Loading the blender...', {
