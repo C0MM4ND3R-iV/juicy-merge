@@ -25,6 +25,10 @@ internal.post('/on-app-install', async (c) => {
       subredditName: context.subredditName,
       title: 'Juicy Merge',
       entry: 'default',
+          styles: {
+      backgroundColor: '#0c1030FF',
+      backgroundColorDark: '#0c1030FF',
+    },
     });
 
     return c.json({ ok: true }, 200);
