@@ -1,30 +1,48 @@
-## Devvit Phaser Starter
+# Juicy Merge
 
-A starter to build web applications on Reddit's developer platform
+A fruit-merging puzzle game built as a Reddit app with Devvit. Drop and merge fruits to score points — combine identical fruits to create bigger ones. Reach the score threshold to unlock the event reward code.
 
-- [Devvit](https://developers.reddit.com/): A way to build and deploy immersive games on Reddit
-- [Vite](https://vite.dev/): For compiling the webView
-- [Phaser](https://phaser.io/): 2D game engine
-- [Hono](https://hono.dev/): For backend logic
-- [TypeScript](https://www.typescriptlang.org/): For type safety
+## Stack
 
-## Getting Started
+- [Devvit](https://developers.reddit.com/) — Reddit's developer platform for embedded apps
+- [Phaser 3](https://phaser.io/) — 2D game engine with Matter.js physics
+- [Vite](https://vite.dev/) — build toolchain
+- [Hono](https://hono.dev/) — lightweight backend for server-side logic
+- [TypeScript](https://www.typescriptlang.org/)
 
-> Make sure you have Node 22 downloaded on your machine before running!
+## Project Structure
 
-1. Run `npm create devvit@latest --template=phaser`
-2. Go through the installation wizard. You will need to create a Reddit account and connect it to Reddit developers
-3. Copy the command on the success page into your terminal
+```
+src/
+  client/
+    scenes/       # Phaser scenes: Boot, Preloader, MainMenu, Game, GameOver
+    config.ts     # Game constants (reward code, score threshold, event ID)
+    theme.ts      # Shared color palette and CSS/Phaser color helpers
+    game.ts       # Phaser app entry point
+    splash.ts     # Reddit post splash screen entry point
+  server/
+    index.ts      # Hono server (post creation, app install trigger)
+  shared/
+    index.ts      # Types shared between client and server
+```
+
+## Requirements
+
+- Node >= 22.2.0
+- A Reddit account connected to [Reddit Developers](https://developers.reddit.com/)
 
 ## Commands
 
-- `npm run dev`: Starts a development server where you can develop your application live on Reddit.
-- `npm run build`: Builds your client and server projects
-- `npm run deploy`: Uploads a new version of your app
-- `npm run launch`: Publishes your app for review
-- `npm run login`: Logs your CLI into Reddit
-- `npm run type-check`: Type checks, lints, and prettifies your app
+| Command | Description |
+|---|---|
+| `npm run dev` | Start live playtest on Reddit |
+| `npm run build` | Build client and server |
+| `npm run deploy` | Type-check, lint, and upload to Reddit |
+| `npm run launch` | Deploy and publish for review |
+| `npm run login` | Authenticate the Devvit CLI |
+| `npm run type-check` | Run TypeScript type checking |
+| `npm run lint` | Run ESLint |
 
-## Credits
+## Moderator Actions
 
-Thanks to the Phaser team for [providing a great template](https://github.com/phaserjs/template-vite-ts)!
+Mods can create or remove Juicy Merge game posts from the subreddit or post context menu in Reddit.
