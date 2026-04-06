@@ -1,8 +1,6 @@
 import { Scene } from 'phaser';
 import * as Phaser from 'phaser';
-
-const colorValue = (value: number | string) =>
-  typeof value === 'number' ? value : Phaser.Display.Color.HexStringToColor(value).color;
+import { THEME, colorValue } from '../theme';
 
 export class Preloader extends Scene {
   private progressRing!: Phaser.GameObjects.Graphics;
@@ -18,25 +16,13 @@ export class Preloader extends Scene {
 
   preload() {
     const { width, height } = this.scale;
-    const theme = this.registry.get('theme') ?? {
-      bgDark: 0x140811,
-      bg: 0x210b18,
-      panel: 0x321022,
-      accent: 0xff4fa3,
-      accentGlow: 0xff84c2,
-      accentWarm: 0xffa457,
-      text: '#fff4f8',
-      textSoft: '#ffd3e3',
-      textMuted: '#f3aac6',
-      stroke: '#7c174f',
-    };
 
-    this.cameras.main.setBackgroundColor(theme.bgDark);
+    this.cameras.main.setBackgroundColor(THEME.bgDark);
 
-    this.add.rectangle(0, 0, width, height, theme.bgDark).setOrigin(0);
+    this.add.rectangle(0, 0, width, height, THEME.bgDark).setOrigin(0);
     this.add.ellipse(width * 0.28, height * 0.18, width * 0.72, 240, 0xff4fa3, 0.12);
     this.add.ellipse(width * 0.76, height * 0.78, width * 0.68, 220, 0xff9c5f, 0.08);
-    this.add.ellipse(width * 0.5, height * 0.58, width * 1.05, height * 0.85, theme.bg, 0.7);
+    this.add.ellipse(width * 0.5, height * 0.58, width * 1.05, height * 0.85, THEME.bg, 0.7);
 
     const cx = width / 2;
     const cy = height / 2;
@@ -45,9 +31,9 @@ export class Preloader extends Scene {
     const panelH = Math.min(height - 48, 320);
 
     this.panel = this.add.graphics();
-    this.panel.fillStyle(theme.panel, 0.92);
+    this.panel.fillStyle(THEME.panel, 0.92);
     this.panel.fillRoundedRect(cx - panelW / 2, cy - panelH / 2, panelW, panelH, 28);
-    this.panel.lineStyle(3, colorValue(theme.accentGlow), 0.22);
+    this.panel.lineStyle(3, colorValue(THEME.accentGlow), 0.22);
     this.panel.strokeRoundedRect(cx - panelW / 2, cy - panelH / 2, panelW, panelH, 28);
     this.panel.lineStyle(1, 0xffffff, 0.08);
     this.panel.strokeRoundedRect(cx - panelW / 2 + 8, cy - panelH / 2 + 8, panelW - 16, panelH - 16, 22);
@@ -58,18 +44,18 @@ export class Preloader extends Scene {
       .text(cx, cy - panelH * 0.33, 'Juicy Merge', {
         fontFamily: 'Arial Black, Arial, sans-serif',
         fontSize: `${Math.round(Math.max(22, panelW * 0.088))}px`,
-        color: theme.text,
-        stroke: theme.stroke,
+        color: THEME.text,
+        stroke: THEME.stroke,
         strokeThickness: 5,
       })
       .setOrigin(0.5)
-      .setShadow(0, 0, theme.accent, 10, true, true);
+      .setShadow(0, 0, THEME.accent, 10, true, true);
 
     this.add
       .text(cx, cy - panelH * 0.2, 'Loading the blender...', {
         fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: `${Math.round(Math.max(13, panelW * 0.04))}px`,
-        color: theme.textMuted,
+        color: THEME.textMuted,
       })
       .setOrigin(0.5);
 
@@ -80,7 +66,7 @@ export class Preloader extends Scene {
       .text(cx, cy + 2, '0%', {
         fontFamily: 'Arial Black, Arial, sans-serif',
         fontSize: `${Math.round(ringRadius * 0.62)}px`,
-        color: theme.text,
+        color: THEME.text,
       })
       .setOrigin(0.5);
 
@@ -88,7 +74,7 @@ export class Preloader extends Scene {
       .text(cx, cy + ringRadius * 1.9, 'Preparing juicy assets...', {
         fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: `${Math.round(Math.max(13, ringRadius * 0.28))}px`,
-        color: theme.textSoft,
+        color: THEME.textSoft,
       })
       .setOrigin(0.5)
       .setAlpha(0.95);
@@ -109,7 +95,7 @@ export class Preloader extends Scene {
       );
       this.progressRingBg.strokePath();
 
-      this.progressRing.lineStyle(10, theme.accent, 1);
+      this.progressRing.lineStyle(10, THEME.accent, 1);
       this.progressRing.beginPath();
       this.progressRing.arc(
         cx,
@@ -139,7 +125,7 @@ export class Preloader extends Scene {
         ease: 'Sine.easeInOut',
       });
     });
-    
+
     this.load.setPath('../assets');
     this.load.image('logo_menu', 'logo_menu.png');
     this.load.image('glass_half', 'glass_half.png');
@@ -152,11 +138,11 @@ export class Preloader extends Scene {
     this.load.image(`fruits_Peach`, `fruits/peach.png`);
     this.load.image(`fruits_Melon`, `fruits/melon.png`);
     this.load.image(`fruits_Watermelon`, `fruits/watermelon.png`);
-    
+
     this.load.audio('sfx_merge', 'sfx/merge.wav');
     this.load.audio('sfx_drop', 'sfx/drop.wav');
     this.load.audio('sfx_gameover', 'sfx/game_over.wav');
-    this.load.audio('music_bgm', 'sfx/bgm.mp3');    
+    this.load.audio('music_bgm', 'sfx/bgm.mp3');
   }
 
   create() {

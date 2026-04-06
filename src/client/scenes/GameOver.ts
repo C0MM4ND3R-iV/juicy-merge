@@ -1,5 +1,7 @@
 import { Scene, GameObjects, Scenes, Structs } from 'phaser';
 import * as Phaser from 'phaser';
+import { THEME, colorValue, cssColor } from '../theme';
+import { SCORE_THRESHOLD } from '../config';
 
 type GameOverData = {
   score?: number;
@@ -23,28 +25,6 @@ type SceneButton = Phaser.GameObjects.Container & {
   enabled: boolean;
   styleVariant: 'primary' | 'small';
 };
-
-const THEME = {
-  bgDark: 0x140811,
-  bg: 0x210b18,
-  panel: 0x321022,
-  panelSoft: 0x4b1835,
-  accent: 0xff4fa3,
-  accentGlow: 0xff84c2,
-  accentWarm: 0xffa457,
-  text: '#fff4f8',
-  textSoft: '#ffd3e3',
-  textMuted: '#f2aaca',
-  reward: '#ffe7a6',
-  success: '#fff0b5',
-  danger: '#ffb3ce',
-  stroke: '#7d174f',
-};
-
-const cssColor = (value: number) => `#${value.toString(16).padStart(6, '0')}`;
-
-const colorValue = (value: number | string) =>
-  typeof value === 'number' ? value : Phaser.Display.Color.HexStringToColor(value).color;
 
 export class GameOver extends Scene {
   private camera!: Phaser.Cameras.Scene2D.Camera;
@@ -77,8 +57,8 @@ export class GameOver extends Scene {
 
   private score = 0;
   private best = 0;
-  private rewardThreshold = 4000;
-  private rewardCode = 'uEZRyCAMHS';
+  private rewardThreshold = SCORE_THRESHOLD;
+  private rewardCode = '';
   private rewardUnlockedThisRun = false;
   private rewardPreviouslyUnlocked = false;
   private rewardState: RewardState = 'locked';
@@ -91,8 +71,8 @@ export class GameOver extends Scene {
   init(data: GameOverData): void {
     this.score = Math.max(0, Math.floor(data.score ?? 0));
     this.best = Math.max(this.score, Math.floor(data.best ?? this.score));
-    this.rewardThreshold = Math.max(1, Math.floor(data.rewardThreshold ?? 5000));
-    this.rewardCode = (data.rewardCode ?? 'XYZ').trim();
+    this.rewardThreshold = Math.max(1, Math.floor(data.rewardThreshold ?? SCORE_THRESHOLD));
+    this.rewardCode = (data.rewardCode ?? '').trim();
 
     const rewardFromScore = this.score >= this.rewardThreshold;
     const rewardFromBest = this.best >= this.rewardThreshold;
@@ -447,32 +427,104 @@ export class GameOver extends Scene {
   }
 
   private async copyRewardCode(): Promise<void> {
-    if (!this.rewardCode || this.rewardState === 'locked') {
-      return;
-    }
+    if (!this.rewardCode || this.rewardState === 'locked') return;
 
-    let copied = false;
-
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    // Stage 1: modern Clipboard API (works in most browsers with HTTPS + user gesture)
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      try {
         await navigator.clipboard.writeText(this.rewardCode);
-        copied = true;
-      } else if (typeof document !== 'undefined') {
-        const helper = document.createElement('textarea');
-        helper.value = this.rewardCode;
-        helper.style.position = 'fixed';
-        helper.style.opacity = '0';
-        document.body.appendChild(helper);
-        helper.focus();
-        helper.select();
-        copied = document.execCommand('copy');
-        document.body.removeChild(helper);
+        this.showCopyFeedback(true);
+        return;
+      } catch {
+        // API exists but permission denied (common in embedded webviews) — fall through
       }
-    } catch {
-      copied = false;
     }
 
-    this.showCopyFeedback(copied);
+    // Stage 2: legacy execCommand via a temporary element
+    if (typeof document !== 'undefined') {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = this.rewardCode;
+        ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01;';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (ok) {
+          this.showCopyFeedback(true);
+          return;
+        }
+      } catch {
+        // execCommand not supported — fall through
+      }
+    }
+
+    // Stage 3: both APIs failed (typical on mobile Reddit webview).
+    // Show a styled overlay with the code in a real <input> so the user
+    // can tap → long-press → Copy via the OS text-selection menu.
+    this.showCodeOverlay();
+  }
+
+  private showCodeOverlay(): void {
+    if (typeof document === 'undefined') return;
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = [
+      'position:fixed', 'inset:0', 'z-index:9999',
+      'display:flex', 'align-items:center', 'justify-content:center',
+      'background:rgba(18,6,17,0.84)', 'touch-action:auto',
+    ].join(';');
+
+    const box = document.createElement('div');
+    box.style.cssText = [
+      'background:#210b18', 'border:2px solid #ff4fa3', 'border-radius:14px',
+      'padding:18px 20px', 'text-align:center',
+      'max-width:300px', 'width:82vw',
+      'font-family:Arial,Helvetica,sans-serif',
+    ].join(';');
+
+    const hint = document.createElement('p');
+    hint.textContent = 'Tap the code, then long-press to copy:';
+    hint.style.cssText = 'color:#f1a9c7;font-size:13px;margin:0 0 10px;';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = this.rewardCode;
+    input.readOnly = true;
+    input.style.cssText = [
+      'display:block', 'width:100%', 'box-sizing:border-box',
+      'font-size:22px', 'font-family:Arial Black,Arial,sans-serif',
+      'padding:8px 10px', 'border-radius:8px',
+      'border:2px solid #ff88c6', 'background:#341022',
+      'color:#ffe7a6', 'text-align:center', 'letter-spacing:2px',
+    ].join(';');
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = 'Close';
+    closeBtn.style.cssText = [
+      'display:block', 'margin:14px auto 0',
+      'padding:7px 22px', 'border-radius:8px',
+      'border:none', 'background:#ff4fa3', 'color:#fff4f8',
+      'font-size:14px', 'font-family:Arial Black,Arial,sans-serif',
+      'cursor:pointer',
+    ].join(';');
+
+    box.appendChild(hint);
+    box.appendChild(input);
+    box.appendChild(closeBtn);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    // Focus + select so some browsers handle copy immediately on tap
+    input.focus();
+    input.setSelectionRange(0, input.value.length);
+
+    const cleanup = () => {
+      if (document.body.contains(overlay)) document.body.removeChild(overlay);
+    };
+    closeBtn.addEventListener('click', cleanup);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) cleanup(); });
   }
 
   private showCopyFeedback(copied: boolean): void {
@@ -517,7 +569,6 @@ export class GameOver extends Scene {
     const subFont = isPortrait ? 15 : 17;
     const scoreFont = isPortrait ? 34 : 38;
     const bestFont = isPortrait ? 26 : 30;
-    const rewardValueFont = this.rewardState === 'locked' ? (isPortrait ? 21 : 24) : isPortrait ? 24 : 27;
     const footerFont = isPortrait ? 14 : 15;
 
     const statsW = cardW - 42;
@@ -622,11 +673,19 @@ export class GameOver extends Scene {
 
     const rewardLeft = cx - rewardW / 2 + 16;
     const copyButtonBaseWidth = 96;
-    const copyButtonDesiredWidth = isPortrait ? 86 : 96;
+    const copyButtonDesiredWidth = isPortrait ? 80 : 96;
     const copyButtonScale = copyButtonDesiredWidth / copyButtonBaseWidth;
     const copyButtonVisualWidth = copyButtonBaseWidth * copyButtonScale;
     const copyButtonX = cx + rewardW / 2 - copyButtonVisualWidth / 2 - 12;
-    const rewardTextWrap = rewardW - copyButtonVisualWidth - 56;
+    // Available width for the reward value text: from its left edge to the copy button's left edge minus a gap
+    const rewardTextWrap = rewardW - 16 - copyButtonVisualWidth - 20;
+
+    // Arial Black is ~0.72em wide per character. The reward code has no spaces so the whole
+    // string must fit on one line; for the locked label ("4000 points") word-wrap handles it.
+    const codeStr = view.rewardValue;
+    const charsToFit = this.rewardState !== 'locked' ? codeStr.length : 6; // 'points' = longest word
+    const maxFontForWidth = charsToFit > 0 ? Math.floor(rewardTextWrap / (charsToFit * 0.72)) : 30;
+    const rewardValueFont = Math.min(isPortrait ? 22 : 26, maxFontForWidth);
 
     this.rewardLabelText
       ?.setText(view.rewardLabel)

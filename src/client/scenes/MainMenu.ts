@@ -1,29 +1,11 @@
 import { Scene, GameObjects, Scenes, Structs } from 'phaser';
-import * as Phaser from 'phaser';
+import { THEME, colorValue, cssColor } from '../theme';
 
 type MenuButton = Phaser.GameObjects.Container & {
   redraw: (hovered: boolean) => void;
   widthPx: number;
   heightPx: number;
 };
-
-const THEME = {
-  bgDark: 0x140811,
-  bg: 0x210b18,
-  berry: 0x40112b,
-  panel: 0x331022,
-  panelSoft: 0x4d1836,
-  accent: 0xff4fa3,
-  accentGlow: 0xff86c5,
-  accentWarm: 0xffaa61,
-  text: '#fff4f8',
-  textSoft: '#ffd5e5',
-  textMuted: '#f0a8c4',
-  stroke: '#7f184f',
-};
-
-const colorValue = (value: number | string) =>
-  typeof value === 'number' ? value : Phaser.Display.Color.HexStringToColor(value).color;
 
 export class MainMenu extends Scene {
   private backgroundBottom: GameObjects.Rectangle | null = null;
@@ -72,7 +54,6 @@ export class MainMenu extends Scene {
 
   private buildScene() {
     const { width, height } = this.scale;
-    const cssColor = (value: number) => `#${value.toString(16).padStart(6, '0')}`;
 
     this.backgroundBottom = this.add.rectangle(0, 0, width, height, THEME.bgDark).setOrigin(0);
     this.backgroundTop = this.add.rectangle(0, 0, width, height, THEME.bg).setOrigin(0).setAlpha(0.92);

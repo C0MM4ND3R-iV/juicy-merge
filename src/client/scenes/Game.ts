@@ -1,5 +1,7 @@
 import { Scene } from 'phaser';
 import * as Phaser from 'phaser';
+import { THEME, colorValue, cssColor } from '../theme';
+import { EVENT_ID, LOCAL_BEST_KEY, SCORE_THRESHOLD, REWARD_CODE } from '../config';
 
 type FruitDef = {
   id: number;
@@ -36,10 +38,6 @@ type MatterCollisionEvent = {
   pairs: MatterCollisionPair[];
 };
 
-const EVENT_ID = '1y2026';
-const LOCAL_BEST_KEY = `juicy-merge-best-${EVENT_ID}`;
-const SCORE_THRESHOLD = 4000;
-const REWARD_CODE = 'uEZRyCAMHS';
 const FIXED_TOP_WIDTH = 355;
 const FIXED_BOTTOM_WIDTH = 275;
 const MIN_TOP_WIDTH = 286;
@@ -50,27 +48,6 @@ const GLASS_INNER_TOP_X = 70;
 const GLASS_INNER_TOP_Y = 100;
 const GLASS_INNER_BOTTOM_X = 180;
 const GLASS_INNER_BOTTOM_Y = 1111;
-
-const THEME = {
-  bgDark: 0x120611,
-  bg: 0x220a18,
-  berry: 0x42112e,
-  berrySoft: 0x58173d,
-  plum: 0x2f0e33,
-  panel: 0x341022,
-  panelSoft: 0x4a1734,
-  accent: 0xff4fa3,
-  accentGlow: 0xff88c6,
-  accentWarm: 0xffaa61,
-  text: '#fff4f8',
-  textSoft: '#ffd3e4',
-  textMuted: '#f1a9c7',
-  stroke: '#7d1750',
-  reward: '#ffe39c',
-};
-
-const colorValue = (value: number | string) =>
-  typeof value === 'number' ? value : Phaser.Display.Color.HexStringToColor(value).color;
 
 const FRUITS: FruitDef[] = [
   { id: 0, name: 'Blueberry', radius: 20, color: 0xff456f, nextId: 1, score: 5, artScale: 2.38 },
@@ -131,14 +108,15 @@ export class Game extends Scene {
 
   private lastDropAt = 0;
   private readonly dropCooldownMs = 220;
-  private readonly freshMs = 250;
+  private readonly freshMs = 250;          // merge-collision immunity after spawn
+  private readonly loseCheckFreshMs = 700; // game-over detection immunity after spawn
 
   private merging = new Set<number>();
   private idSeq = 1;
 
   private gameOverTriggered = false;
   private overSince = 0;
-  private readonly overConfirmMs = 250;
+  private readonly overConfirmMs = 500;
 
   private glassDepth = 30;
   private glassAlpha = 1;
@@ -223,10 +201,15 @@ export class Game extends Scene {
       if (fruitId === undefined) continue;
 
       const def = FRUITS[fruitId];
-      if (!def) return;
-      
+      if (!def) continue; // was `return` — that exits update() entirely, masking all further checks
+
+      // Skip fruits that are currently being absorbed into a merge
+      const internalId = go.internalId;
+      if (internalId !== undefined && this.merging.has(internalId)) continue;
+
+      // Give each fruit time to settle before it can trigger game-over
       const spawnAt = go.spawnAt ?? 0;
-      if (spawnAt && this.time.now - spawnAt < this.freshMs) continue;
+      if (spawnAt && this.time.now - spawnAt < this.loseCheckFreshMs) continue;
 
       const r = Math.round(def.radius * this.fruitScale);
       const topOfFruit = go.y - r;
@@ -278,7 +261,7 @@ export class Game extends Scene {
     const rewardHeight = 0;
     const rewardGap = 0;
     const topGap = 65;
-    const bottomMargin = isPortrait ? 30 : 34;
+    const bottomMargin = isPortrait ? 30 : 52;
 
     this.playTop = hudTop + hudHeight + rewardHeight + rewardGap + topGap;
     this.playBottom = height - bottomMargin;
@@ -490,7 +473,6 @@ export class Game extends Scene {
     const panelH = 88;
     const panelX = Math.floor(width / 2 - panelW / 2);
     const panelY = 14;
-    const cssColor = (value: number) => `#${value.toString(16).padStart(6, '0')}`;
 
     const hud = this.add.graphics().setDepth(2000);
     hud.fillStyle(THEME.panel, 0.92);
@@ -564,10 +546,45 @@ export class Game extends Scene {
     this.musicToggleButton = this.makeHudToggleButton('Music', '♫', this.musicEnabled, () => this.toggleMusic());
     this.musicToggleButton.setDepth(2002).setPosition(dividerX + 126, toggleY);
 
+    // "End Blend" button — lets players go to the game-over screen voluntarily
+    {
+      const btnW = 72;
+      const btnH = 26;
+      const bg = this.add.graphics();
+      const hit = this.add.rectangle(0, 0, btnW, btnH, 0xffffff, 0.001);
+      const iconTxt = this.add.text(-btnW / 2 + 14, 0, '✕', {
+        fontFamily: 'Arial Black, Arial, sans-serif', fontSize: '12px', color: THEME.text,
+      }).setOrigin(0.5);
+      const labelTxt = this.add.text(6, 0, 'End', {
+        fontFamily: 'Arial Black, Arial, sans-serif', fontSize: '11px', color: THEME.text,
+      }).setOrigin(0.5);
+
+      const redraw = (hovered: boolean) => {
+        bg.clear();
+        bg.fillStyle(hovered ? 0xff5522 : 0x7a1800, hovered ? 0.96 : 0.88);
+        bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 13);
+        bg.fillStyle(0xffffff, hovered ? 0.14 : 0.06);
+        bg.fillRoundedRect(-btnW / 2 + 3, -btnH / 2 + 3, btnW - 6, btnH * 0.44, 10);
+        bg.lineStyle(2, hovered ? 0xff7755 : 0xff3311, hovered ? 0.7 : 0.4);
+        bg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 13);
+      };
+      redraw(false);
+
+      const endBtn = this.add.container(dividerX - 46, panelY + 18, [bg, hit, iconTxt, labelTxt]).setDepth(2002);
+      hit.setInteractive({ useHandCursor: true })
+        .on('pointerover', () => { endBtn.setScale(1.03); redraw(true); })
+        .on('pointerout',  () => { endBtn.setScale(1);    redraw(false); })
+        .on('pointerdown', (_p: Phaser.Input.Pointer, _lx: number, _ly: number, ev: Phaser.Types.Input.EventData) => {
+          ev.stopPropagation();
+          this.tweens.add({ targets: endBtn, scaleX: 0.97, scaleY: 0.97, yoyo: true, duration: 80, ease: 'Quad.easeOut' });
+          this.triggerGameOver();
+        });
+    }
+
     const rewardBadgeW = Math.min(width - 40, 240);
     const rewardBadgeH = 34;
     const rewardBadgeX = Math.floor(width / 2 - rewardBadgeW / 2);
-    const rewardBadgeY = height - rewardBadgeH - 18;
+    const rewardBadgeY = height - rewardBadgeH - 26;
 
     this.rewardBadgeBg = this.add.graphics().setDepth(1999).setVisible(false).setAlpha(0);
     this.rewardBadgeBg.fillStyle(THEME.panelSoft, 0.96);
